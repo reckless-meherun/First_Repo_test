@@ -42,6 +42,7 @@ class LTexture
 		
 		//Renders texture at given point
 		void render( int x, int y, double angle, SDL_RendererFlip flip, SDL_Rect* clip = NULL,  SDL_Point* center = NULL );
+		void RenderSprite(int x, int y, SDL_Rect* clip);
 
 		//Gets image dimensions
 		int getWidth();
@@ -56,61 +57,65 @@ class LTexture
 		int mHeight;
 };
 
-//The dot that will move around on the screen
-class Dot
+//The sprite that will move around on the screen
+class Sprite
 {
     public:
-		//The dimensions of the dot
-		static const int DOT_WIDTH = 20;
-		static const int DOT_HEIGHT = 20;
+		//The dimensions of the sprite
+		static const int sprite_WIDTH = 20;
+		static const int sprite_HEIGHT = 20;
 
-		//Maximum axis velocity of the dot
-		static const int DOT_VEL = 5;
+		// //Maximum axis velocity of the sprite
+		static const int sprite_VEL = 5;
 
 		//Initializes the variables
-		Dot();
+		Sprite();
 
-		//Takes key presses and adjusts the dot's velocity
+		//Takes key presses and adjusts the sprite's velocity
 		void handleEvent( SDL_Event& e );
 
-		//Moves the dot
+		//Moves the sprite
 		void move();
 
-		//Shows the dot on the screen
-		void render();
+		//Shows the sprite on the screen
+		
 	
-
     private:
-		//The X and Y offsets of the dot
-		int mPosX, mPosY;
+		//The actual hardware texture
+		SDL_Texture* mTexture;
 
-		//The velocity of the dot
-		int mVelX, mVelY;
+		
 };
+
+//The X and Y offsets of the sprite
+		int sprite_PosX, sprite_PosY;
+
+		//The velocity of the sprite
+		int sprite_VelX, sprite_VelY;
 
 //Walking animation
 		const int WALKING_ANIMATION_FRAMES = 4;
-		SDL_Rect gDotClips[ WALKING_ANIMATION_FRAMES ];
+		SDL_Rect gspriteClip[ WALKING_ANIMATION_FRAMES ];
 
 class Animal
 {
     public:
-		//The dimensions of the dot
+		//The dimensions of the sprite
 		static const int Animal_WIDTH = 20;
 		static const int Animal_HEIGHT = 20;
 
 		//Initializes the variables
 		Animal();
 
-		//Shows the dot on the screen
+		//Shows the sprite on the screen
 		void render();
 
     private:
-		//The X and Y offsets of the dot
+		//The X and Y offsets of the sprite
 		int posAx1, posAx2, posAx3, posAy1, posAy2, posAy3;
 
-		//The velocity of the dot
-		int mVelX, mVelY;
+		// //The velocity of the sprite
+		// int sprite_VelX, sprite_VelY;
 };
 
 //Starts up SDL and creates window
@@ -129,11 +134,9 @@ SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 
 //Scene textures
-LTexture gDotTexture;
+LTexture gSpriteTexture;
 LTexture gBGTexture;
 LTexture gAnimalTexture; 
-
-
 
 LTexture::LTexture()
 {
@@ -181,8 +184,8 @@ bool LTexture::loadFromFile( std::string path )
 			//mWidth = 100;
 			mHeight = loadedSurface->h;
 			//mHeight = 100;
-			// gDotTexture.mHeight = 100;
-			// gDotTexture.mWidth = 70;
+			// gSpriteTexture.mHeight = 100;
+			// gSpriteTexture.mWidth = 70;
 			// gAnimalTexture.mHeight = 200;
 			// gAnimalTexture.mWidth = 140;
 		}
@@ -289,40 +292,51 @@ int LTexture::getHeight()
 	return mHeight;
 }
 
-Dot::Dot()
+Sprite::Sprite()
 {
     //Initialize the offsets
-    mPosX = 0;
-    mPosY = SCREEN_HEIGHT/2;
+    sprite_PosX = 0;
+    sprite_PosY = SCREEN_HEIGHT/2;
 
-    //Initialize the velocity
-    mVelX = 0;
-    mVelY = 0;
+    // //Initialize the velocity
+    // sprite_Vel = 0;
+    // sprite_VelY = 0;
 }
 
-void Dot::render()
+//Set rendering space and render to screen
+	SDL_Rect SpriteQuad = { 0, 579, 112, 166 };
+
+void LTexture :: RenderSprite(int x, int y, SDL_Rect* clip)
 {
-    //Show the dot
-	gDotTexture.render( mPosX, mPosY, 0.0, SDL_FLIP_NONE);
+    //Set clip rendering dimensions
+	if( clip != NULL )
+	{
+		SpriteQuad.w = clip->w;
+		SpriteQuad.h = clip->h;
+	}
+
+	//Render to screen
+	SDL_RenderCopy( gRenderer, mTexture, clip, &SpriteQuad );
+	SpriteQuad.x += sprite_VelX;
+
+	if(SpriteQuad.x>=SCREEN_WIDTH)
+	{
+		SpriteQuad.x = 0;
+	}
 }
 
-void Dot::handleEvent( SDL_Event& e )
+void Sprite::handleEvent( SDL_Event& e )
 {
     //If a key was pressed
-	if( e.type == SDL_KEYDOWN && e.key.repeat == 0 )
+    if( e.type == SDL_KEYDOWN && e.key.repeat == 0 )
     {
         //Adjust the velocity
         switch( e.key.keysym.sym )
         {
-            case SDLK_UP: mVelY -= DOT_VEL; break;
-            case SDLK_DOWN: mVelY += DOT_VEL; break;
-            case SDLK_LEFT: 
-            //gDotTexture.render( mPosX, mPosY, 0.0, SDL_FLIP_VERTICAL);
-            mVelX -= DOT_VEL; 
-            
-            break;
-            case SDLK_RIGHT: mVelX += DOT_VEL; 
-			break;
+            case SDLK_UP: sprite_VelY -= sprite_VEL; break;
+            case SDLK_DOWN: sprite_VelY += sprite_VEL; break;
+            case SDLK_LEFT: sprite_VelX -= sprite_VEL; break;
+            case SDLK_RIGHT: sprite_VelX += sprite_VEL; break;
         }
     }
     //If a key was released
@@ -331,42 +345,36 @@ void Dot::handleEvent( SDL_Event& e )
         //Adjust the velocity
         switch( e.key.keysym.sym )
         {
-            case SDLK_UP: mVelY += DOT_VEL; break;
-            case SDLK_DOWN: mVelY -= DOT_VEL; break;
-            case SDLK_LEFT: 
-            //gDotTexture.render( mPosX, mPosY, 0.0, SDL_FLIP_VERTICAL);
-            mVelX += DOT_VEL;  
-            break;
-            case SDLK_RIGHT: mVelX -= DOT_VEL; break;
+            case SDLK_UP: sprite_VelY += sprite_VEL; break;
+            case SDLK_DOWN: sprite_VelY -= sprite_VEL; break;
+            case SDLK_LEFT: sprite_VelX += sprite_VEL; break;
+            case SDLK_RIGHT: sprite_VelX -= sprite_VEL; break;
         }
     }
-
 }
 
-void Dot::move()
+void Sprite::move()
 {
-    //Move the dot left or right
-    mPosX += mVelX;
+    //Move the sprite left or right
+    sprite_PosX += sprite_VelX;
 
-    //If the dot went too far to the left or right
-    if( ( mPosX < 0 ) || ( mPosX + DOT_WIDTH > SCREEN_WIDTH ) )
+    //If the sprite went too far to the left or right
+    if( ( sprite_PosX < 0 ) || ( sprite_PosX + sprite_WIDTH > SCREEN_WIDTH ) )
     {
         //Move back
-        mPosX -= mVelX;
+        sprite_PosX -= sprite_VelY;
     }
 
-    //Move the dot up or down
-    mPosY += mVelY;
+    //Move the sprite up or down
+    sprite_PosY += sprite_VelY;
 
-    //If the dot went too far up or down
-    if( ( mPosY < 0 ) || ( mPosY + DOT_HEIGHT > SCREEN_HEIGHT ) )
+    //If the sprite went too far up or down
+    if( ( sprite_PosY < 0 ) || ( sprite_PosY + sprite_HEIGHT > SCREEN_HEIGHT ) )
     {
         //Move back
-        mPosY -= mVelY;
+        sprite_PosY -= sprite_VelY;
     }
 }
-
-
 
 Animal::Animal()
 {
@@ -444,40 +452,40 @@ bool loadMedia()
 	//Loading success flag
 	bool success = true;
 
-	//Load dot texture
-	if( !gDotTexture.loadFromFile("shorted_sprite_sheet.png") )
+	//Load sprite texture
+	if( !gSpriteTexture.loadFromFile("shorted_sprite_sheet.png") )
 	{
-		printf( "Failed to load dot texture!\n" );
+		printf( "Failed to load sprite texture!\n" );
 		success = false;
 	}
 	else
 	{
-		//Set Dot clips
-		gDotClips[ 0 ].x =   0;
-		gDotClips[ 0 ].y =   0;
-		gDotClips[ 0 ].w = 112;
-		gDotClips[ 0 ].h = 166;
+		//Set Sprite clips
+		gspriteClip[ 0 ].x =   0;
+		gspriteClip[ 0 ].y =   0;
+		gspriteClip[ 0 ].w = 112;
+		gspriteClip[ 0 ].h = 166;
 
-		gDotClips[ 1 ].x =  112;
-		gDotClips[ 1 ].y =   0;
-		gDotClips[ 1 ].w =  112;
-		gDotClips[ 1 ].h = 166;
+		gspriteClip[ 1 ].x =  112;
+		gspriteClip[ 1 ].y =   0;
+		gspriteClip[ 1 ].w =  112;
+		gspriteClip[ 1 ].h = 166;
 		
-		gDotClips[ 2 ].x = 224;
-		gDotClips[ 2 ].y =   0;
-		gDotClips[ 2 ].w = 112;
-		gDotClips[ 2 ].h = 166;
+		gspriteClip[ 2 ].x = 224;
+		gspriteClip[ 2 ].y =   0;
+		gspriteClip[ 2 ].w = 112;
+		gspriteClip[ 2 ].h = 166;
 
-		gDotClips[ 3 ].x = 336;
-		gDotClips[ 3 ].y =   0;
-		gDotClips[ 3 ].w = 112;
-		gDotClips[ 3 ].h = 166;
+		gspriteClip[ 3 ].x = 336;
+		gspriteClip[ 3 ].y =   0;
+		gspriteClip[ 3 ].w = 112;
+		gspriteClip[ 3 ].h = 166;
 	}
 
 	//load animals
 	if( !gAnimalTexture.loadFromFile("animal.png") )
 	{
-		printf( "Failed to load dot texture!\n" );
+		printf( "Failed to load sprite texture!\n" );
 		success = false;
 	}
 
@@ -494,7 +502,7 @@ bool loadMedia()
 void close()
 {
 	//Free loaded images
-	gDotTexture.free();
+	gSpriteTexture.free();
 	gBGTexture.free();
 	gAnimalTexture.free();
 	//Destroy window	
@@ -530,8 +538,8 @@ int main( int argc, char* args[] )
 			//Event handler
 			SDL_Event e;
 
-			//The dot that will be moving around on the screen
-			Dot dot;
+			//The sprite that will be moving around on the screen
+			Sprite sprite;
 
 			//Current animation frame
 			int frame = 0;
@@ -553,15 +561,16 @@ int main( int argc, char* args[] )
 						quit = true;
 					}
 
-					//Handle input for the dot
-					dot.handleEvent( e );
+					//Handle input for the sprite
+					sprite.handleEvent( e );
                     
-				}
+				}				
 
+				sprite.move();
 				
 
 				//Scroll background
-				--scrollingOffset;
+				scrollingOffset -= 2;
 				if( scrollingOffset < -gBGTexture.getWidth() )
 				{
 					scrollingOffset = 0;
@@ -577,13 +586,11 @@ int main( int argc, char* args[] )
 
 				//Render objects
 				//Render current frame
-				SDL_Rect* currentClip = &gDotClips[ frame / 4 ];
-				gDotTexture.render( ( SCREEN_WIDTH - currentClip->w ) / 3, 579, 0, SDL_FLIP_NONE, currentClip );
+				SDL_Rect* currentClip = &gspriteClip[ frame / 4 ];
+				gSpriteTexture.RenderSprite( ( SCREEN_WIDTH - currentClip->w ) / 2, ( SCREEN_HEIGHT - currentClip->h ) / 3, currentClip  );
 		
 				//Go to next frame
-				++frame;
-				
-				
+				++frame;				
 				
 				//Cycle animation
 				if( frame / 4 >= WALKING_ANIMATION_FRAMES )
@@ -591,7 +598,6 @@ int main( int argc, char* args[] )
 					frame = 0;
 				}		
 				
-				//gDotClips[ frame ].x++;
 
 				//render animals
 				animal.render();
